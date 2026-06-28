@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Табло автобуса</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="display-mode">
+    <div class="bus-display">
+        <!-- Верхняя панель с погодой и временем -->
+        <div class="top-bar">
+            <div class="weather">
+                <span class="weather-icon" id="weatherIcon">☀️</span>
+                <span id="temperature">22°C</span>
+            </div>
+            <div class="date-time">
+                <span id="currentDate">28 июня 2026</span>
+                <span class="time-separator">|</span>
+                <span id="currentTime">14:30:45</span>
+            </div>
+        </div>
+
+        <!-- Основная информация -->
+        <div class="main-content">
+            <!-- Боковая панель маршрута -->
+            <div class="route-sidebar">
+                <div class="route-number" id="routeNumber">--</div>
+                <div class="route-name" id="routeName">Выберите маршрут</div>
+            </div>
+
+            <!-- Центральная панель -->
+            <div class="center-panel">
+                <div class="next-stop-label">СЛЕДУЮЩАЯ ОСТАНОВКА</div>
+                <div class="next-stop-name" id="nextStop">---</div>
+                <div class="current-stop-info">
+                    <span class="current-label">Текущая:</span>
+                    <span id="currentStop">---</span>
+                </div>
+            </div>
+
+            <!-- Конечная остановка -->
+            <div class="final-stop">
+                <div class="final-label">КОНЕЧНАЯ</div>
+                <div class="final-name" id="finalStop">---</div>
+            </div>
+        </div>
+
+        <!-- Нижняя панель с бегущей строкой -->
+        <div class="bottom-bar">
+            <div class="scrolling-text">
+                <span id="marqueeText">Добро пожаловать! Выберите маршрут для отображения информации.</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Селектор маршрутов (скрытый, управляется с админки) -->
+    <div class="route-selector" id="routeSelector">
+        <select id="displayRouteSelect">
+            <option value="">Выберите маршрут для табло</option>
+        </select>
+        <button id="applyRoute" class="btn-apply">Применить</button>
+    </div>
+
+    <script src="display.js"></script>
+</body>
+</html>
