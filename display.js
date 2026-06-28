@@ -100,4 +100,57 @@ async function loadRouteInfo(routeId) {
 }
 
 // Обновление информации об остановках
-async function updateStopInfo(
+async function updateStopInfo(routeId) {
+    try {
+        const response = await fetch(`/api/current-stop?route_id=${routeId}`);
+        const data = await response.json();
+        
+        if (data.current_stop) {
+            document.getElementById('currentStop').textContent = data.current_stop.name;
+        }
+        
+        if (data.next_stop) {
+            document.getElementById('nextStop').textContent = data.next_stop.name;
+        } else if (data.current_stop && data.current_order >= data.total_stops) {
+            document.getElementById('nextStop').textContent = 'КОНЕЧНАЯ';
+        }
+        
+        // Обновляем бегущую строку
+        updateMarquee(data);
+        
+    } catch (error) {
+        console.error('Error updating stop info:', error);
+    }
+}
+
+// Обновление бегущей строки
+function updateMarquee(data) {
+    let text = '';
+    
+    if (data.current_stop) {
+        text = `Текущая остановка: ${data.current_stop.name}`;
+        
+        if (data.next_stop) {
+            text += ` → Следующая: ${data.next_stop.name}`;
+        } else {
+            text += ` → КОНЕЧНАЯ`;
+        }
+        
+        text += ` | Остановка ${data.current_order} из ${data.total_stops}`;
+    } else {
+        text = 'Ожидание начала движения...';
+    }
+    
+    document.getElementById('marqueeText').textContent = text;
+}
+
+// Автоматическое обновление
+function startAutoUpdate(routeId) {
+    if (updateInterval) {
+        clearInterval(updateInterval);
+    }
+    
+    updateInterval = setInterval(() => {
+        updateStopInfo(routeId);
+    }, 3000);
+}
