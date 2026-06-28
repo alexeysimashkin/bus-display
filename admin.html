@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Панель администратора</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="admin-mode">
+    <div class="admin-container">
+        <header>
+            <h1>⚙️ Панель управления табло</h1>
+            <a href="/display" class="btn-view-display" target="_blank">👁️ Открыть табло</a>
+        </header>
+
+        <div class="admin-grid">
+            <!-- Управление городами -->
+            <div class="admin-card">
+                <h2>🏙️ Города</h2>
+                <div class="input-group">
+                    <input type="text" id="newCityName" placeholder="Название города">
+                    <button onclick="addCity()" class="btn-primary">Добавить</button>
+                </div>
+                <div class="list-container" id="citiesList">
+                    Загрузка...
+                </div>
+            </div>
+
+            <!-- Управление маршрутами -->
+            <div class="admin-card">
+                <h2>🚌 Маршруты</h2>
+                <div class="input-group">
+                    <select id="routeCitySelect">
+                        <option value="">Выберите город</option>
+                    </select>
+                    <input type="text" id="routeNumber" placeholder="Номер">
+                    <input type="text" id="routeName" placeholder="Название">
+                    <button onclick="addRoute()" class="btn-primary">Создать</button>
+                </div>
+                <div class="list-container" id="routesList">
+                    Выберите город для просмотра маршрутов
+                </div>
+            </div>
+
+            <!-- Управление остановками -->
+            <div class="admin-card">
+                <h2>🛑 Остановки</h2>
+                <div class="input-group">
+                    <select id="stopRouteSelect">
+                        <option value="">Выберите маршрут</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <input type="text" id="stopName" placeholder="Название остановки">
+                    <input type="text" id="stopTime" placeholder="Время (мин)">
+                    <button onclick="addStop()" class="btn-primary">Добавить</button>
+                </div>
+                <div class="list-container" id="stopsList">
+                    Выберите маршрут для управления остановками
+                </div>
+            </div>
+
+            <!-- Управление движением -->
+            <div class="admin-card">
+                <h2>🚦 Управление движением</h2>
+                <div class="input-group">
+                    <select id="controlRouteSelect">
+                        <option value="">Выберите маршрут</option>
+                    </select>
+                </div>
+                <div class="control-buttons">
+                    <button onclick="moveToPrev()" class="btn-control">⬅️ Назад</button>
+                    <button onclick="moveToNext()" class="btn-control btn-next">Вперед ➡️</button>
+                    <button onclick="resetRoute()" class="btn-control">🔄 Сброс</button>
+                </div>
+                <div class="route-status" id="routeStatus">
+                    Статус маршрута
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>
