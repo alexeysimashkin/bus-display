@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Инициализация базы данных</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .init-container {
+            background: #2d2d2d;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        
+        h1 {
+            color: #4fc3f7;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .info {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ffd700;
+        }
+        
+        .info p {
+            margin: 5px 0;
+            color: #ccc;
+        }
+        
+        button {
+            width: 100%;
+            padding: 15px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        
+        .status.success {
+            background: #1b5e20;
+            color: #a5d6a7;
+            display: block;
+        }
+        
+        .status.error {
+            background: #b71c1c;
+            color: #ef9a9a;
+            display: block;
+        }
+        
+        .status.loading {
+            background: #1565c0;
+            color: #90caf9;
+            display: block;
+        }
+        
+        .links {
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .links a {
+            color: #4fc3f7;
+            text-decoration: none;
+            display: block;
+            margin: 10px 0;
+            padding: 10px;
+            background: #1a1a1a;
+            border-radius: 5px;
+        }
+        
+        .links a:hover {
+            background: #333;
+        }
+        
+        pre {
+            background: #1a1a1a;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+            color: #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="init-container">
+        <h1>🚌 Инициализация базы данных</h1>
+        
+        <div class="info">
+            <p>🔧 Этот инструмент создаст все необходимые таблицы и добавит тестовые данные:</p>
+            <p>• 3 города (Москва, СПб, Казань)</p>
+            <p>• 5 маршрутов</p>
+            <p>• 30+ остановок</p>
+        </div>
+        
+        <button onclick="initDatabase()" id="initBtn">
+            🚀 Инициализировать базу данных
+        </button>
+        
+        <div id="status" class="status"></div>
+        
+        <div class="links" style="display:none" id="links">
+            <a href="/admin">⚙️ Панель администратора</a>
+            <a href="/display">🚌 Табло для пассажиров</a>
+        </div>
+    </div>
+
+    <script>
+        async function initDatabase() {
+            const btn = document.getElementById('initBtn');
+            const status = document.getElementById('status');
+            const links = document.getElementById('links');
+            
+            btn.disabled = true;
+            btn.textContent = '⏳ Инициализация...';
+            
+            status.className = 'status loading';
+            status.textContent = 'Инициализация базы данных...';
+            
+            try {
+                const response = await fetch('/api/init-db', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer bus-display-init-2026'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    status.className = 'status success';
+                    status.innerHTML = `
+                        ✅ ${data.message}<br><br>
+                        📊 Статистика:<br>
+                        • Городов: ${data.stats.cities}<br>
+                        • Маршрутов: ${data.stats.routes}<br>
+                        • Остановок: ${data.stats.stops}
+                    `;
+                    links.style.display = 'block';
+                } else {
+                    throw new Error(data.error || 'Неизвестная ошибка');
+                }
+            } catch (error) {
+                status.className = 'status error';
+                status.innerHTML = `
+                    ❌ Ошибка инициализации:<br>
+                    ${error.message}<br><br>
+                    <pre>Проверьте настройки DATABASE_URL в Vercel</pre>
+                `;
+            } finally {
+                btn.disabled = true;
+                btn.textContent = '✅ Инициализация завершена';
+            }
+        }
+    </script>
+</body>
+</html>
