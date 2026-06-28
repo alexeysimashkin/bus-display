@@ -2,6 +2,12 @@ import { neon } from '@neondatabase/serverless';
 
 const sql = neon(process.env.DATABASE_URL);
 
+// Добавляем возможность выполнять сырые SQL запросы
+sql.unsafe = (query) => {
+  // Используем внутренний метод для выполнения сырых запросов
+  return sql(query);
+};
+
 export default sql;
 
 export async function initDatabase() {
@@ -39,7 +45,6 @@ export async function initDatabase() {
       )
     `;
     
-    // Таблица для отслеживания текущей остановки
     await sql`
       CREATE TABLE IF NOT EXISTS current_stop_state (
         id SERIAL PRIMARY KEY,
@@ -49,7 +54,7 @@ export async function initDatabase() {
       )
     `;
     
-    console.log('✅ Database initialized successfully');
+    console.log('✅ Database tables initialized successfully');
   } catch (error) {
     console.error('❌ Database initialization error:', error);
     throw error;
