@@ -1,0 +1,377 @@
+/* Общие стили */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+}
+
+/* ============ РЕЖИМ ТАБЛО (ПАССАЖИРЫ) ============ */
+.display-mode {
+    background: #000;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+.bus-display {
+    width: 100vw;
+    height: 100vh;
+    background: #0a0a0a;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Верхняя панель */
+.top-bar {
+    background: #111;
+    padding: 15px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #333;
+    color: #fff;
+    font-size: 18px;
+}
+
+.weather {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #4fc3f7;
+}
+
+.weather-icon {
+    font-size: 32px;
+}
+
+#temperature {
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.date-time {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-size: 18px;
+}
+
+#currentTime {
+    font-size: 28px;
+    font-weight: bold;
+    color: #ffd700;
+    font-family: 'Courier New', monospace;
+}
+
+/* Основной контент */
+.main-content {
+    flex: 1;
+    display: flex;
+    background: linear-gradient(135deg, #0d1b2a 0%, #1b2838 100%);
+}
+
+.route-sidebar {
+    background: #ffd700;
+    color: #000;
+    padding: 20px;
+    width: 160px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+}
+
+.route-number {
+    font-size: 64px;
+    line-height: 1;
+    margin-bottom: 10px;
+}
+
+.route-name {
+    font-size: 14px;
+    text-align: center;
+    opacity: 0.8;
+}
+
+.center-panel {
+    flex: 1;
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.next-stop-label {
+    color: #888;
+    font-size: 16px;
+    letter-spacing: 4px;
+    margin-bottom: 15px;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+}
+
+.next-stop-name {
+    color: #fff;
+    font-size: 42px;
+    font-weight: bold;
+    margin-bottom: 15px;
+    text-align: center;
+    text-shadow: 0 0 20px rgba(79, 195, 247, 0.5);
+}
+
+.current-stop-info {
+    color: #4fc3f7;
+    font-size: 18px;
+    margin-top: 10px;
+}
+
+.current-label {
+    color: #888;
+    margin-right: 10px;
+}
+
+.final-stop {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 20px;
+    width: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border-left: 2px solid #333;
+}
+
+.final-label {
+    color: #888;
+    font-size: 14px;
+    letter-spacing: 3px;
+    margin-bottom: 10px;
+}
+
+.final-name {
+    color: #4fc3f7;
+    font-size: 20px;
+    font-weight: bold;
+    text-align: center;
+}
+
+/* Нижняя панель */
+.bottom-bar {
+    background: #111;
+    padding: 12px 0;
+    border-top: 2px solid #333;
+    overflow: hidden;
+}
+
+.scrolling-text {
+    animation: scroll-left 25s linear infinite;
+    white-space: nowrap;
+    color: #666;
+    font-size: 14px;
+}
+
+@keyframes scroll-left {
+    0% { transform: translateX(100%); }
+    100% { transform: translateX(-100%); }
+}
+
+/* Селектор маршрутов */
+.route-selector {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(0,0,0,0.8);
+    padding: 10px;
+    border-radius: 5px;
+    display: flex;
+    gap: 10px;
+}
+
+.route-selector select {
+    padding: 8px;
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+    border-radius: 3px;
+}
+
+.btn-apply {
+    padding: 8px 15px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+/* ============ РЕЖИМ АДМИНИСТРАТОРА ============ */
+.admin-mode {
+    background: #f0f2f5;
+    padding: 20px;
+}
+
+.admin-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.admin-container header {
+    background: #1a237e;
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.btn-view-display {
+    background: #4CAF50;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.admin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 20px;
+}
+
+.admin-card {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.admin-card h2 {
+    margin-bottom: 15px;
+    color: #333;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 10px;
+}
+
+.input-group {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.input-group input,
+.input-group select {
+    flex: 1;
+    min-width: 120px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.btn-primary {
+    padding: 10px 20px;
+    background: #1a237e;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.btn-primary:hover {
+    background: #283593;
+}
+
+.list-container {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #eee;
+    border-radius: 5px;
+    padding: 10px;
+}
+
+.list-item {
+    padding: 10px;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.list-item:last-child {
+    border-bottom: none;
+}
+
+.btn-delete {
+    background: #f44336;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.control-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.btn-control {
+    flex: 1;
+    padding: 12px;
+    background: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.btn-next {
+    background: #4CAF50;
+}
+
+.btn-control:hover {
+    opacity: 0.9;
+}
+
+.route-status {
+    margin-top: 15px;
+    padding: 15px;
+    background: #f5f5f5;
+    border-radius: 5px;
+    text-align: center;
+    font-size: 16px;
+}
+
+.status-current {
+    color: #2196F3;
+    font-weight: bold;
+}
+
+.status-next {
+    color: #4CAF50;
+}
+
+.status-final {
+    color: #f44336;
+}
