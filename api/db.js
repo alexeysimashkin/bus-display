@@ -2,12 +2,6 @@ import { neon } from '@neondatabase/serverless';
 
 const sql = neon(process.env.DATABASE_URL);
 
-// Добавляем возможность выполнять сырые SQL запросы
-sql.unsafe = (query) => {
-  // Используем внутренний метод для выполнения сырых запросов
-  return sql(query);
-};
-
 export default sql;
 
 export async function initDatabase() {
@@ -50,6 +44,7 @@ export async function initDatabase() {
         id SERIAL PRIMARY KEY,
         route_id INTEGER REFERENCES routes(id) ON DELETE CASCADE UNIQUE,
         current_stop_order INTEGER DEFAULT 1,
+        announced_next INTEGER,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `;
