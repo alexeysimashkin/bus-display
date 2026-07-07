@@ -7,6 +7,7 @@
   "rewrites": [
     { "source": "/admin", "destination": "/admin.html" },
     { "source": "/display", "destination": "/display.html" },
+    { "source": "/live", "destination": "/live-display.html" },
     { "source": "/init", "destination": "/init.html" },
     { "source": "/api/(.*)", "destination": "/api/$1" }
   ]
