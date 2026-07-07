@@ -1,3 +1,7 @@
+// Глобальная переменная для хранения фазы
+let currentPhase = 'arrived'; // 'announced' или 'arrived'
+let announcedNextStopOrder = null;
+
 // Инициализация
 document.addEventListener('DOMContentLoaded', () => {
     loadCities();
@@ -60,7 +64,7 @@ function displayCities(cities) {
 }
 
 function updateCitySelects(cities) {
-    const selects = ['routeCitySelect', 'controlRouteSelect'];
+    const selects = ['routeCitySelect'];
     
     selects.forEach(selectId => {
         const select = document.getElementById(selectId);
@@ -76,6 +80,11 @@ function updateCitySelects(cities) {
         
         if (currentValue) select.value = currentValue;
     });
+
+    // Обновляем также селект в управлении движением
+    const controlSelect = document.getElementById('controlRouteSelect');
+    controlSelect.innerHTML = '<option value="">Выберите маршрут</option>';
+    // Он будет заполнен после выбора города в блоке маршрутов
 }
 
 async function addCity() {
@@ -165,7 +174,7 @@ function updateRouteSelects(routes) {
         routes.forEach(route => {
             const option = document.createElement('option');
             option.value = route.id;
-            option.textContent = `${route.route_number} - ${route.name}`;
+            option.textContent = `№${route.route_number} - ${route.name}`;
             select.appendChild(option);
         });
         
@@ -263,7 +272,6 @@ async function addStop() {
         return;
     }
     
-    // Получаем текущее количество остановок
     const response = await fetch(`/api/stops?route_id=${routeId}`);
     const stops = await response.json();
     const orderNumber = stops.length + 1;
@@ -303,18 +311,35 @@ async function deleteStop(id) {
 }
 
 // ============ УПРАВЛЕНИЕ ДВИЖЕНИЕМ ============
+let routeTotalStops = 0;
+let routeCurrentOrder = 1;
+
 async function loadRouteStatus(routeId) {
     try {
-        const response = await fetch(`/api/current-stop?route_id=${routeId}`);
-        const data = await response.json();
-        
-        displayRouteStatus(data);
+        // Получаем остановки
+        const stopsResponse = await fetch(`/api/stops?route_id=${routeId}`);
+        const stops = await stopsResponse.json();
+        routeTotalStops = stops.length;
+
+        // Получаем состояние
+        const stateResponse = await fetch(`/api/current-stop?route_id=${routeId}`);
+        const data = await stateResponse.json();
+        routeCurrentOrder = data.current_order || 1;
+        currentPhase = 'arrived';
+        announcedNextStopOrder = null;
+
+        // Получаем инфу о маршруте
+        const routesResponse = await fetch('/api/routes');
+        const routes = await routesResponse.json();
+        const route = routes.find(r => r.id == routeId);
+
+        displayRouteStatus(data, route);
     } catch (error) {
         console.error('Error loading route status:', error);
     }
 }
 
-function displayRouteStatus(data) {
+function displayRouteStatus(data, route) {
     const container = document.getElementById('routeStatus');
     
     if (!data.current_stop) {
@@ -322,77 +347,105 @@ function displayRouteStatus(data) {
         return;
     }
     
+    const currentStop = data.current_stop;
+    const nextStop = data.next_stop;
+    const isLast = data.current_order >= data.total_stops;
+
+    let phaseHtml = '';
+    if (currentPhase === 'announced') {
+        phaseHtml = '<span class="status-phase phase-announced">📢 ОБЪЯВЛЕНА СЛЕДУЮЩАЯ</span>';
+    } else {
+        phaseHtml = '<span class="status-phase phase-arrived">🚌 ПРИБЫЛИ</span>';
+    }
+
     container.innerHTML = `
-        <p>
-            <strong>Текущая остановка:</strong>
-            <span class="status-current">${data.current_stop.name}</span>
-        </p>
-        ${data.next_stop ? `
-            <p>
-                <strong>Следующая:</strong>
-                <span class="status-next">${data.next_stop.name}</span>
-            </p>
+        <p class="status-label">ТЕКУЩАЯ ОСТАНОВКА</p>
+        <p class="status-current">📍 ${currentStop.name}</p>
+        ${!isLast && nextStop ? `
+            <p style="margin-top: 10px;" class="status-label">СЛЕДУЮЩАЯ ОСТАНОВКА</p>
+            <p class="status-next">➡️ ${nextStop.name}</p>
         ` : `
-            <p><span class="status-final">🚩 Конечная остановка</span></p>
+            <p style="margin-top: 10px;" class="status-final">🚩 КОНЕЧНАЯ</p>
         `}
         <p style="margin-top: 10px; color: #888;">
             Остановка ${data.current_order} из ${data.total_stops}
         </p>
+        ${phaseHtml}
     `;
 }
 
-async function moveToNext() {
+// ============ КНОПКА "ОБЪЯВИТЬ СЛЕДУЮЩУЮ" ============
+async function announceNext() {
     const routeId = document.getElementById('controlRouteSelect').value;
     if (!routeId) {
         alert('Выберите маршрут');
         return;
     }
-    
+
+    if (routeCurrentOrder >= routeTotalStops) {
+        alert('Это конечная остановка. Нельзя объявить следующую.');
+        return;
+    }
+
+    // Обновляем фазу на "объявлена следующая"
+    currentPhase = 'announced';
+    announcedNextStopOrder = routeCurrentOrder + 1;
+
+    // Сохраняем состояние на сервере (без сдвига текущей остановки)
     try {
-        const response = await fetch('/api/current-stop', {
+        await fetch('/api/current-stop', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 route_id: parseInt(routeId),
-                direction: 'next'
+                direction: 'announce',
+                announced_next: announcedNextStopOrder
             })
         });
-        
-        const data = await response.json();
-        displayRouteStatus(data);
-        
-        if (data.is_last) {
-            alert('🚩 Достигнута конечная остановка!');
-        }
+
+        await loadRouteStatus(routeId);
     } catch (error) {
-        console.error('Error moving to next stop:', error);
+        console.error('Error:', error);
     }
 }
 
-async function moveToPrev() {
+// ============ КНОПКА "ПРИБЫЛИ" ============
+async function arriveAtStop() {
     const routeId = document.getElementById('controlRouteSelect').value;
     if (!routeId) {
         alert('Выберите маршрут');
         return;
     }
-    
+
+    if (routeCurrentOrder >= routeTotalStops) {
+        alert('Это конечная остановка.');
+        return;
+    }
+
+    // Сдвигаем текущую остановку на следующую
+    routeCurrentOrder = announcedNextStopOrder || routeCurrentOrder + 1;
+    currentPhase = 'arrived';
+    announcedNextStopOrder = null;
+
+    // Обновляем сервер
     try {
-        const response = await fetch('/api/current-stop', {
+        await fetch('/api/current-stop', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 route_id: parseInt(routeId),
-                direction: 'prev'
+                direction: 'next',
+                force_order: routeCurrentOrder
             })
         });
-        
-        const data = await response.json();
-        displayRouteStatus(data);
+
+        await loadRouteStatus(routeId);
     } catch (error) {
-        console.error('Error moving to previous stop:', error);
+        console.error('Error:', error);
     }
 }
 
+// ============ СБРОС МАРШРУТА ============
 async function resetRoute() {
     const routeId = document.getElementById('controlRouteSelect').value;
     if (!routeId) {
@@ -402,8 +455,12 @@ async function resetRoute() {
     
     if (!confirm('Сбросить маршрут на начальную остановку?')) return;
     
+    routeCurrentOrder = 1;
+    currentPhase = 'arrived';
+    announcedNextStopOrder = null;
+    
     try {
-        const response = await fetch('/api/current-stop', {
+        await fetch('/api/current-stop', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -412,8 +469,7 @@ async function resetRoute() {
             })
         });
         
-        const data = await response.json();
-        displayRouteStatus(data);
+        await loadRouteStatus(routeId);
         alert('✅ Маршрут сброшен на начальную остановку');
     } catch (error) {
         console.error('Error resetting route:', error);
