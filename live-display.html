@@ -277,36 +277,6 @@
             line-height: 1.3;
         }
 
-        /* Бегущая строка внизу */
-        .ticker-bar {
-            background: #111;
-            border-top: 2px solid #ffd700;
-            padding: 12px 0;
-            overflow: hidden;
-            height: 50px;
-            display: flex;
-            align-items: center;
-        }
-
-        .ticker-content {
-            animation: ticker-scroll 20s linear infinite;
-            white-space: nowrap;
-            color: #ffd700;
-            font-size: 20px;
-            font-weight: bold;
-            padding-left: 100%;
-        }
-
-        @keyframes ticker-scroll {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-100%); }
-        }
-
-        .ticker-content.announcement {
-            animation: ticker-scroll 15s linear infinite;
-            color: #4fc3f7;
-        }
-
         /* Индикатор остановок */
         .stop-indicator {
             position: absolute;
@@ -342,6 +312,27 @@
         @keyframes pulse-dot {
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.5); }
+        }
+
+        /* Нижняя панель с названием маршрута */
+        .bottom-bar {
+            background: #111;
+            border-top: 1px solid #333;
+            padding: 10px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 50px;
+        }
+
+        .route-full-name {
+            color: #fff;
+            font-size: 16px;
+        }
+
+        .stop-counter {
+            color: #888;
+            font-size: 14px;
         }
 
         /* Кнопка возврата */
@@ -421,7 +412,6 @@
                     Текущая: <span class="current-stop-name" id="currentStopDisplay">---</span>
                 </div>
                 
-                <!-- Индикатор остановок -->
                 <div class="stop-indicator" id="stopIndicator"></div>
             </div>
 
@@ -431,33 +421,26 @@
             </div>
         </div>
 
-        <!-- Бегущая строка -->
-        <div class="ticker-bar">
-            <div class="ticker-content" id="tickerText">
-                Добро пожаловать! Выберите маршрут для начала движения.
-            </div>
+        <!-- Нижняя панель -->
+        <div class="bottom-bar">
+            <div class="route-full-name" id="routeFullName">Маршрут №42: Центр - Вокзал</div>
+            <div class="stop-counter" id="stopCounter">Остановка 1 из 7</div>
         </div>
     </div>
 
     <script>
-        // ============ ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ============
         let selectedRouteId = null;
         let selectedRouteData = null;
         let stopsData = [];
         let currentStopOrder = 1;
         let totalStops = 0;
         let autoAdvanceInterval = null;
-        let tickerInterval = null;
-        let tickerPhase = 'route'; // 'route' или 'announcement'
-        let isAnnouncing = false;
 
-        // ============ ИНИЦИАЛИЗАЦИЯ ============
         document.addEventListener('DOMContentLoaded', () => {
             loadCities();
             startClock();
         });
 
-        // ============ ЧАСЫ ============
         function startClock() {
             updateClock();
             setInterval(updateClock, 1000);
@@ -465,20 +448,14 @@
 
         function updateClock() {
             const now = new Date();
-            const dateStr = now.toLocaleDateString('ru-RU', { 
-                day: 'numeric', 
-                month: 'long', 
-                year: 'numeric' 
-            });
+            const dateStr = now.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
             const timeStr = now.toLocaleTimeString('ru-RU');
-            
             const dateEl = document.getElementById('currentDate');
             const timeEl = document.getElementById('currentTime');
             if (dateEl) dateEl.textContent = dateStr;
             if (timeEl) timeEl.textContent = timeStr;
         }
 
-        // ============ ПОГОДА ============
         const weatherOptions = [
             { icon: '☀️', temp: '28°C' },
             { icon: '⛅', temp: '24°C' },
@@ -497,15 +474,12 @@
         setInterval(randomWeather, 60000);
         randomWeather();
 
-        // ============ ЗАГРУЗКА ГОРОДОВ ============
         async function loadCities() {
             try {
                 const response = await fetch('/api/cities');
                 const cities = await response.json();
-                
                 const select = document.getElementById('citySelect');
                 select.innerHTML = '<option value="">Выберите город...</option>';
-                
                 cities.forEach(city => {
                     const option = document.createElement('option');
                     option.value = city.id;
@@ -517,7 +491,6 @@
             }
         }
 
-        // ============ ОБРАБОТЧИК ВЫБОРА ГОРОДА ============
         async function onCityChange() {
             const cityId = document.getElementById('citySelect').value;
             const routeSelect = document.getElementById('routeSelect');
@@ -533,7 +506,6 @@
             try {
                 const response = await fetch(`/api/routes?city_id=${cityId}`);
                 const routes = await response.json();
-                
                 routeSelect.innerHTML = '<option value="">Выберите маршрут...</option>';
                 routes.forEach(route => {
                     const option = document.createElement('option');
@@ -542,9 +514,10 @@
                     option.dataset.routeNumber = route.route_number;
                     option.dataset.routeName = route.name;
                     option.dataset.endPoint = route.end_point;
+                    option.dataset.startPoint = route.start_point;
+                    option.dataset.cityName = route.city_name;
                     routeSelect.appendChild(option);
                 });
-                
                 routeSelect.disabled = false;
                 startBtn.disabled = true;
             } catch (error) {
@@ -552,30 +525,27 @@
             }
         }
 
-        // ============ ОБРАБОТЧИК ВЫБОРА МАРШРУТА ============
         function onRouteChange() {
             const routeSelect = document.getElementById('routeSelect');
             const startBtn = document.getElementById('startBtn');
             startBtn.disabled = !routeSelect.value;
         }
 
-        // ============ ЗАПУСК ТАБЛО ============
         async function startDisplay() {
             const routeSelect = document.getElementById('routeSelect');
             selectedRouteId = routeSelect.value;
-            
             if (!selectedRouteId) return;
             
-            // Получаем данные маршрута
             const selectedOption = routeSelect.options[routeSelect.selectedIndex];
             selectedRouteData = {
                 id: selectedRouteId,
                 route_number: selectedOption.dataset.routeNumber,
                 name: selectedOption.dataset.routeName,
-                end_point: selectedOption.dataset.endPoint
+                end_point: selectedOption.dataset.endPoint,
+                start_point: selectedOption.dataset.startPoint,
+                city_name: selectedOption.dataset.cityName
             };
             
-            // Загружаем остановки
             try {
                 const response = await fetch(`/api/stops?route_id=${selectedRouteId}`);
                 stopsData = await response.json();
@@ -586,28 +556,16 @@
                     return;
                 }
                 
-                // Получаем текущее состояние маршрута
                 const stateResponse = await fetch(`/api/current-stop?route_id=${selectedRouteId}`);
                 const stateData = await stateResponse.json();
                 currentStopOrder = stateData.current_order || 1;
                 
-                // Переключаем экраны
                 document.getElementById('selectionScreen').classList.add('hidden');
                 document.getElementById('displayScreen').classList.remove('hidden');
                 
-                // Заполняем информацию
                 updateDisplayInfo();
-                
-                // Создаем индикатор остановок
                 createStopIndicator();
-                
-                // Запускаем бегущую строку
-                startTicker();
-                
-                // Запускаем автоматическое переключение
                 startAutoAdvance();
-                
-                // Обновляем состояние на сервере
                 updateServerState();
                 
             } catch (error) {
@@ -616,47 +574,35 @@
             }
         }
 
-        // ============ ОБНОВЛЕНИЕ ИНФОРМАЦИИ НА ТАБЛО ============
         function updateDisplayInfo() {
-            // Номер и название маршрута
             document.getElementById('dispRouteNumber').textContent = selectedRouteData.route_number;
             document.getElementById('dispRouteName').textContent = selectedRouteData.name;
             document.getElementById('dispBigNumber').textContent = selectedRouteData.route_number;
-            
-            // Конечная остановка
             document.getElementById('finalStopDisplay').textContent = selectedRouteData.end_point;
-            
-            // Текущая и следующая остановки
+            document.getElementById('routeFullName').textContent = 
+                `Маршрут №${selectedRouteData.route_number}: ${selectedRouteData.start_point} → ${selectedRouteData.end_point}`;
             updateStopDisplay();
         }
 
         function updateStopDisplay() {
             const currentStop = stopsData[currentStopOrder - 1];
-            const nextStop = stopsData[currentStopOrder]; // следующая после текущей
+            const nextStop = stopsData[currentStopOrder];
             
-            // Обновляем текущую остановку
-            const currentStopEl = document.getElementById('currentStopDisplay');
-            if (currentStop) {
-                currentStopEl.textContent = currentStop.name;
-            }
+            document.getElementById('currentStopDisplay').textContent = currentStop ? currentStop.name : '---';
+            document.getElementById('stopCounter').textContent = `Остановка ${currentStopOrder} из ${totalStops}`;
             
-            // Обновляем следующую остановку
-            const nextStopEl = document.getElementById('nextStopDisplay');
             if (nextStop) {
-                nextStopEl.textContent = nextStop.name;
+                document.getElementById('nextStopDisplay').textContent = nextStop.name;
             } else if (currentStopOrder >= totalStops) {
-                nextStopEl.textContent = 'КОНЕЧНАЯ';
+                document.getElementById('nextStopDisplay').textContent = 'КОНЕЧНАЯ';
             }
             
-            // Обновляем индикатор
             updateStopIndicator();
         }
 
-        // ============ ИНДИКАТОР ОСТАНОВОК ============
         function createStopIndicator() {
             const container = document.getElementById('stopIndicator');
             container.innerHTML = '';
-            
             stopsData.forEach((stop, index) => {
                 const dot = document.createElement('div');
                 dot.className = 'stop-dot';
@@ -664,7 +610,6 @@
                 dot.dataset.index = index + 1;
                 container.appendChild(dot);
             });
-            
             updateStopIndicator();
         }
 
@@ -673,99 +618,30 @@
             dots.forEach(dot => {
                 const index = parseInt(dot.dataset.index);
                 dot.className = 'stop-dot';
-                
-                if (index < currentStopOrder) {
-                    dot.classList.add('passed');
-                } else if (index === currentStopOrder) {
-                    dot.classList.add('current');
-                } else {
-                    dot.classList.add('upcoming');
-                }
+                if (index < currentStopOrder) dot.classList.add('passed');
+                else if (index === currentStopOrder) dot.classList.add('current');
+                else dot.classList.add('upcoming');
             });
         }
 
-        // ============ БЕГУЩАЯ СТРОКА ============
-        function startTicker() {
-            updateTickerText();
-            tickerInterval = setInterval(() => {
-                tickerPhase = tickerPhase === 'route' ? 'announcement' : 'route';
-                updateTickerText();
-            }, 10000);
-        }
-
-        function updateTickerText() {
-            const tickerEl = document.getElementById('tickerText');
-            const currentStop = stopsData[currentStopOrder - 1];
-            const nextStop = stopsData[currentStopOrder];
-            
-            // Сбрасываем анимацию
-            tickerEl.style.animation = 'none';
-            tickerEl.offsetHeight; // trigger reflow
-            tickerEl.style.animation = '';
-            
-            if (tickerPhase === 'announcement' && nextStop) {
-                // Фаза объявления
-                tickerEl.textContent = `🔊 Следующая остановка — ${nextStop.name}`;
-                tickerEl.className = 'ticker-content announcement';
-                isAnnouncing = true;
-                
-                // Через 3 секунды возвращаемся к обычной строке
-                setTimeout(() => {
-                    if (tickerPhase === 'announcement') {
-                        tickerPhase = 'route';
-                        updateTickerText();
-                    }
-                }, 3000);
-            } else {
-                // Обычная информационная строка
-                tickerEl.className = 'ticker-content';
-                isAnnouncing = false;
-                
-                if (currentStop && nextStop) {
-                    tickerEl.textContent = `🚌 Маршрут №${selectedRouteData.route_number} | Остановка "${currentStop.name}" | Следующая: "${nextStop.name}" | Конечная: "${selectedRouteData.end_point}"`;
-                } else if (currentStop && currentStopOrder >= totalStops) {
-                    tickerEl.textContent = `🚌 Маршрут №${selectedRouteData.route_number} | 🏁 Конечная остановка: "${currentStop.name}" | Спасибо за поездку!`;
-                }
-            }
-        }
-
-        // ============ АВТОМАТИЧЕСКОЕ ПЕРЕКЛЮЧЕНИЕ ============
         function startAutoAdvance() {
             if (autoAdvanceInterval) clearInterval(autoAdvanceInterval);
-            
             autoAdvanceInterval = setInterval(() => {
                 moveToNextStop();
-            }, 8000); // Каждые 8 секунд переключаем
+            }, 8000);
         }
 
         async function moveToNextStop() {
             if (currentStopOrder >= totalStops) {
-                // Достигли конечной, останавливаем авто-переключение
                 clearInterval(autoAdvanceInterval);
                 autoAdvanceInterval = null;
-                
-                // Показываем сообщение
-                const tickerEl = document.getElementById('tickerText');
-                tickerEl.style.animation = 'none';
-                tickerEl.offsetHeight;
-                tickerEl.style.animation = '';
-                tickerEl.textContent = '🏁 Мы прибыли на конечную остановку. Спасибо за поездку!';
-                tickerEl.className = 'ticker-content';
-                
                 return;
             }
-            
-            // Переключаем на следующую
             currentStopOrder++;
             updateStopDisplay();
             updateServerState();
-            
-            // Показываем анонс следующей остановки
-            tickerPhase = 'announcement';
-            updateTickerText();
         }
 
-        // ============ ОБНОВЛЕНИЕ СОСТОЯНИЯ НА СЕРВЕРЕ ============
         async function updateServerState() {
             try {
                 await fetch('/api/current-stop', {
@@ -782,33 +658,22 @@
             }
         }
 
-        // ============ ВОЗВРАТ К ВЫБОРУ ============
         function goBack() {
-            // Останавливаем все интервалы
             if (autoAdvanceInterval) clearInterval(autoAdvanceInterval);
-            if (tickerInterval) clearInterval(tickerInterval);
-            
-            // Сбрасываем переменные
             selectedRouteId = null;
             selectedRouteData = null;
             stopsData = [];
             currentStopOrder = 1;
             totalStops = 0;
-            
-            // Переключаем экраны
             document.getElementById('displayScreen').classList.add('hidden');
             document.getElementById('selectionScreen').classList.remove('hidden');
-            
-            // Сбрасываем селекторы
             document.getElementById('routeSelect').value = '';
             document.getElementById('startBtn').disabled = true;
         }
 
-        // ============ УПРАВЛЕНИЕ С КЛАВИАТУРЫ ============
         document.addEventListener('keydown', (e) => {
             const displayVisible = !document.getElementById('displayScreen').classList.contains('hidden');
             if (!displayVisible) return;
-            
             switch(e.key) {
                 case 'ArrowRight':
                 case ' ':
@@ -829,25 +694,19 @@
             }
         });
 
-        // ============ СВАЙПЫ ДЛЯ ТАЧ-ЭКРАНОВ ============
         let touchStartX = 0;
         document.addEventListener('touchstart', (e) => {
             touchStartX = e.touches[0].clientX;
         });
-
         document.addEventListener('touchend', (e) => {
             const displayVisible = !document.getElementById('displayScreen').classList.contains('hidden');
             if (!displayVisible) return;
-            
             const touchEndX = e.changedTouches[0].clientX;
             const diff = touchStartX - touchEndX;
-            
             if (Math.abs(diff) > 50) {
                 if (diff > 0) {
-                    // Свайп влево - следующая
                     moveToNextStop();
                 } else {
-                    // Свайп вправо - предыдущая
                     if (currentStopOrder > 1) {
                         currentStopOrder--;
                         updateStopDisplay();
