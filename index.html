@@ -2,28 +2,92 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="0; url=/display">
-    <title>Перенаправление</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Система табло автобуса</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         body {
-            background: #000;
+            background: #0a0a1a;
             color: #fff;
+            font-family: 'Arial', sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            font-family: Arial, sans-serif;
             flex-direction: column;
+            gap: 20px;
         }
-        a {
-            color: #4fc3f7;
-            margin: 10px;
+        h1 {
+            color: #ffd700;
+            font-size: 48px;
+            margin-bottom: 30px;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+        }
+        .nav-links {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .nav-link {
+            display: block;
+            padding: 20px 30px;
+            background: rgba(20, 20, 40, 0.9);
+            border: 2px solid #333;
+            border-radius: 15px;
+            color: #fff;
+            text-decoration: none;
+            font-size: 18px;
+            transition: all 0.3s;
+            text-align: center;
+            min-width: 200px;
+        }
+        .nav-link:hover {
+            border-color: #ffd700;
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(255, 215, 0, 0.2);
+        }
+        .nav-link .icon {
+            font-size: 36px;
+            display: block;
+            margin-bottom: 10px;
+        }
+        .nav-link.live {
+            border-color: #4CAF50;
+        }
+        .nav-link.live:hover {
+            border-color: #66BB6A;
+            box-shadow: 0 10px 20px rgba(76, 175, 80, 0.3);
         }
     </style>
 </head>
 <body>
-    <h1>Система табло автобуса</h1>
-    <p><a href="/display">🚌 Табло для пассажиров</a></p>
-    <p><a href="/admin">⚙️ Панель администратора</a></p>
+    <h1>🚌 Система табло автобуса</h1>
+    <div class="nav-links">
+        <a href="/live" class="nav-link live">
+            <span class="icon">📺</span>
+            LIVE Табло
+            <small style="display:block; color:#888; margin-top:5px;">Выбрать маршрут и запустить</small>
+        </a>
+        <a href="/display" class="nav-link">
+            <span class="icon">👁️</span>
+            Простое табло
+            <small style="display:block; color:#888; margin-top:5px;">Монитор для пассажиров</small>
+        </a>
+        <a href="/admin" class="nav-link">
+            <span class="icon">⚙️</span>
+            Админ-панель
+            <small style="display:block; color:#888; margin-top:5px;">Управление маршрутами</small>
+        </a>
+        <a href="/init" class="nav-link">
+            <span class="icon">🗄️</span>
+            Инициализация БД
+            <small style="display:block; color:#888; margin-top:5px;">Первичная настройка</small>
+        </a>
+    </div>
 </body>
 </html>
