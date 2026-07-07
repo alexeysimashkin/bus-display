@@ -5,11 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Система табло автобуса</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             background: #0a0a1a;
             color: #fff;
@@ -56,37 +52,30 @@
             display: block;
             margin-bottom: 10px;
         }
-        .nav-link.live {
-            border-color: #4CAF50;
-        }
-        .nav-link.live:hover {
-            border-color: #66BB6A;
-            box-shadow: 0 10px 20px rgba(76, 175, 80, 0.3);
-        }
     </style>
 </head>
 <body>
     <h1>🚌 Система табло автобуса</h1>
     <div class="nav-links">
-        <a href="/live" class="nav-link live">
+        <a href="/live" class="nav-link">
             <span class="icon">📺</span>
             LIVE Табло
-            <small style="display:block; color:#888; margin-top:5px;">Выбрать маршрут и запустить</small>
+            <small style="display:block; color:#888; margin-top:5px;">Интерактивное табло</small>
         </a>
-        <a href="/display" class="nav-link">
-            <span class="icon">👁️</span>
-            Простое табло
-            <small style="display:block; color:#888; margin-top:5px;">Монитор для пассажиров</small>
+        <a href="/ticker" class="nav-link">
+            <span class="icon">📜</span>
+            Бегущая строка
+            <small style="display:block; color:#888; margin-top:5px;">Только бегущая строка</small>
         </a>
         <a href="/admin" class="nav-link">
             <span class="icon">⚙️</span>
             Админ-панель
-            <small style="display:block; color:#888; margin-top:5px;">Управление маршрутами</small>
+            <small style="display:block; color:#888; margin-top:5px;">Управление</small>
         </a>
         <a href="/init" class="nav-link">
             <span class="icon">🗄️</span>
             Инициализация БД
-            <small style="display:block; color:#888; margin-top:5px;">Первичная настройка</small>
+            <small style="display:block; color:#888; margin-top:5px;">Настройка</small>
         </a>
     </div>
 </body>
