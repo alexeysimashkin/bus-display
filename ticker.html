@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Бегущая строка</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            font-family: 'Arial', sans-serif;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* Выбор маршрута */
+        .selection-overlay {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 100;
+            display: flex;
+            gap: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .selection-overlay select {
+            padding: 8px 12px;
+            background: #1a1a2e;
+            color: #fff;
+            border: 1px solid #444;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .selection-overlay select:focus {
+            border-color: #ffd700;
+        }
+
+        .selection-overlay button {
+            padding: 8px 16px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .selection-overlay button:hover {
+            background: #45a049;
+        }
+
+        /* Бегущая строка */
+        .ticker-container {
+            width: 100%;
+            overflow: hidden;
+            background: #000;
+            padding: 15px 0;
+            border-top: 2px solid #ffd700;
+            border-bottom: 2px solid #ffd700;
+        }
+
+        .ticker-text {
+            white-space: nowrap;
+            color: #ffd700;
+            font-size: 48px;
+            font-weight: bold;
+            animation: ticker 12s linear infinite;
+            padding-left: 100%;
+        }
+
+        .ticker-text.announcement {
+            color: #4fc3f7;
+            animation: ticker 10s linear infinite;
+        }
+
+        @keyframes ticker {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-100%); }
+        }
+
+        /* Остановленная строка */
+        .ticker-text.stopped {
+            animation: none;
+            color: #fff;
+            text-align: center;
+            width: 100%;
+            padding-left: 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Бегущая строка -->
+    <div class="ticker-container">
+        <div class="ticker-text" id="tickerText">
+            Выберите маршрут
+        </div>
+    </div>
+
+    <!-- Селектор маршрута (скрытый, показан для настройки) -->
+    <div class="selection-overlay" id="selectionOverlay">
+        <select id="tickerRouteSelect">
+            <option value="">Маршрут...</option>
+        </select>
+        <button onclick="applyTickerRoute()">▶ Запустить</button>
+        <button onclick="stopTicker()" style="background:#f44336;">⏹ Стоп</button>
+    </div>
+
+    <script>
+        let tickerInterval = null;
+        let tickerPhase = 'route';
+        let stopsData = [];
+        let currentStopOrder = 1;
+        let totalStops = 0;
+        let selectedRouteData = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadRoutesForTicker();
+        });
+
+        async function loadRoutesForTicker() {
+            try {
+                const response = await fetch('/api/routes');
+                const routes = await response.json();
+                const select = document.getElementById('tickerRouteSelect');
+                select.innerHTML = '<option value="">Выберите маршрут...</option>';
+                routes.forEach(route => {
+                    const option = document.createElement('option');
+                    option.value = route.id;
+                    option.textContent = `№${route.route_number} - ${route.name}`;
+                    option.dataset.routeNumber = route.route_number;
+                    option.dataset.routeName = route.name;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Ошибка загрузки маршрутов:', error);
+            }
+        }
+
+        async function applyTickerRoute() {
+            const select = document.getElementById('tickerRouteSelect');
+            const routeId = select.value;
+            if (!routeId) return;
+
+            const selectedOption = select.options[select.selectedIndex];
+            selectedRouteData = {
+                id: routeId,
+                route_number: selectedOption.dataset.routeNumber,
+                name: selectedOption.dataset.routeName
+            };
+
+            try {
+                const response = await fetch(`/api/stops?route_id=${routeId}`);
+                stopsData = await response.json();
+                totalStops = stopsData.length;
+
+                if (totalStops === 0) {
+                    document.getElementById('tickerText').textContent = 'Нет остановок для этого маршрута';
+                    document.getElementById('tickerText').className = 'ticker-text stopped';
+                    return;
+                }
+
+                const stateResponse = await fetch(`/api/current-stop?route_id=${routeId}`);
+                const stateData = await stateResponse.json();
+                currentStopOrder = stateData.current_order || 1;
+
+                startTicker();
+
+            } catch (error) {
+                console.error('Ошибка:', error);
+            }
+        }
+
+        function startTicker() {
+            if (tickerInterval) clearInterval(tickerInterval);
+            tickerPhase = 'route';
+            updateTickerText();
+
+            tickerInterval = setInterval(() => {
+                if (tickerPhase === 'route') {
+                    // Сначала показываем "Следующая остановка..."
+                    tickerPhase = 'announcement';
+                    updateTickerText();
+                    
+                    // Потом переключаем на следующую остановку
+                    setTimeout(() => {
+                        moveToNextStop();
+                    }, 4000);
+                    
+                } else {
+                    // Потом показываем "Остановка ..."
+                    tickerPhase = 'route';
+                    updateTickerText();
+                }
+            }, 8000);
+        }
+
+        function updateTickerText() {
+            const tickerEl = document.getElementById('tickerText');
+            const currentStop = stopsData[currentStopOrder - 1];
+            const nextStop = stopsData[currentStopOrder];
+
+            // Сбрасываем анимацию
+            tickerEl.style.animation = 'none';
+            tickerEl.offsetHeight;
+            
+            if (tickerPhase === 'announcement' && nextStop) {
+                tickerEl.textContent = `🔊 Следующая остановка — ${nextStop.name}`;
+                tickerEl.className = 'ticker-text announcement';
+                tickerEl.style.animation = 'ticker 10s linear infinite';
+            } else if (tickerPhase === 'route' && currentStop) {
+                tickerEl.textContent = `📍 Остановка «${currentStop.name}» | Маршрут №${selectedRouteData.route_number}`;
+                tickerEl.className = 'ticker-text';
+                tickerEl.style.animation = 'ticker 12s linear infinite';
+            } else if (currentStopOrder >= totalStops) {
+                tickerEl.textContent = `🏁 Конечная остановка. Спасибо за поездку!`;
+                tickerEl.className = 'ticker-text stopped';
+                tickerEl.style.animation = 'none';
+                clearInterval(tickerInterval);
+            }
+        }
+
+        async function moveToNextStop() {
+            if (currentStopOrder >= totalStops) {
+                clearInterval(tickerInterval);
+                updateTickerText();
+                return;
+            }
+            currentStopOrder++;
+        }
+
+        function stopTicker() {
+            if (tickerInterval) clearInterval(tickerInterval);
+            tickerInterval = null;
+            document.getElementById('tickerText').textContent = '⏸ Остановлено';
+            document.getElementById('tickerText').className = 'ticker-text stopped';
+            document.getElementById('tickerText').style.animation = 'none';
+        }
+    </script>
+</body>
+</html>
