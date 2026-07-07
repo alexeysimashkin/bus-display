@@ -5,12 +5,249 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Панель администратора</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #f0f2f5;
+            font-family: 'Arial', sans-serif;
+            padding: 20px;
+        }
+
+        .admin-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: #1a237e;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h1 {
+            font-size: 24px;
+        }
+
+        .header-links {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-view {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .btn-view.ticker {
+            background: #ff9800;
+        }
+
+        .admin-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+        }
+
+        .admin-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .admin-card h2 {
+            margin-bottom: 15px;
+            color: #333;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .input-group input,
+        .input-group select {
+            flex: 1;
+            min-width: 120px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            padding: 10px 20px;
+            background: #1a237e;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .btn-primary:hover {
+            background: #283593;
+        }
+
+        .list-container {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            padding: 10px;
+        }
+
+        .list-item {
+            padding: 10px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .list-item:last-child {
+            border-bottom: none;
+        }
+
+        .btn-delete {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        /* ============ УПРАВЛЕНИЕ ДВИЖЕНИЕМ ============ */
+        .control-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn-control {
+            flex: 1;
+            min-width: 140px;
+            padding: 15px 20px;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .btn-control:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn-announce {
+            background: #ff9800;
+        }
+
+        .btn-announce:hover {
+            background: #f57c00;
+        }
+
+        .btn-arrive {
+            background: #4CAF50;
+        }
+
+        .btn-arrive:hover {
+            background: #388E3C;
+        }
+
+        .btn-reset {
+            background: #f44336;
+        }
+
+        .btn-reset:hover {
+            background: #d32f2f;
+        }
+
+        .route-status {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .status-label {
+            color: #888;
+            font-size: 12px;
+            letter-spacing: 2px;
+        }
+
+        .status-current {
+            color: #1a237e;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .status-next {
+            color: #ff9800;
+            font-weight: bold;
+        }
+
+        .status-final {
+            color: #f44336;
+            font-weight: bold;
+        }
+
+        .status-phase {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        .phase-announced {
+            background: #fff3e0;
+            color: #e65100;
+        }
+
+        .phase-arrived {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+    </style>
 </head>
-<body class="admin-mode">
+<body>
     <div class="admin-container">
         <header>
             <h1>⚙️ Панель управления табло</h1>
-            <a href="/display" class="btn-view-display" target="_blank">👁️ Открыть табло</a>
+            <div class="header-links">
+                <a href="/live" class="btn-view" target="_blank">📺 Табло</a>
+                <a href="/ticker" class="btn-view ticker" target="_blank">📜 Бегущая строка</a>
+            </div>
         </header>
 
         <div class="admin-grid">
@@ -69,12 +306,20 @@
                     </select>
                 </div>
                 <div class="control-buttons">
-                    <button onclick="moveToPrev()" class="btn-control">⬅️ Назад</button>
-                    <button onclick="moveToNext()" class="btn-control btn-next">Вперед ➡️</button>
-                    <button onclick="resetRoute()" class="btn-control">🔄 Сброс</button>
+                    <button onclick="announceNext()" class="btn-control btn-announce">
+                        📢 Объявить следующую
+                    </button>
+                    <button onclick="arriveAtStop()" class="btn-control btn-arrive">
+                        🚌 Прибыли
+                    </button>
+                </div>
+                <div class="control-buttons" style="margin-top: 5px;">
+                    <button onclick="resetRoute()" class="btn-control btn-reset">
+                        🔄 Сброс маршрута
+                    </button>
                 </div>
                 <div class="route-status" id="routeStatus">
-                    Статус маршрута
+                    Выберите маршрут
                 </div>
             </div>
         </div>
