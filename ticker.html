@@ -50,7 +50,6 @@
             }
         }
 
-        /* Стили для разных фаз */
         .ticker-text.announcement {
             color: #4fc3f7;
             animation: ticker 5s linear infinite;
@@ -104,7 +103,6 @@
 
         .selection-overlay button {
             padding: 8px 16px;
-            background: #4CAF50;
             color: white;
             border: none;
             border-radius: 5px;
@@ -114,16 +112,12 @@
             white-space: nowrap;
         }
 
-        .selection-overlay button:hover {
-            background: #45a049;
+        .selection-overlay button.start-btn {
+            background: #4CAF50;
         }
 
         .selection-overlay button.stop-btn {
             background: #f44336;
-        }
-
-        .selection-overlay button.stop-btn:hover {
-            background: #d32f2f;
         }
     </style>
 </head>
@@ -143,28 +137,23 @@
         <select id="tickerRouteSelect" disabled onchange="onTickerRouteChange()">
             <option value="">Маршрут...</option>
         </select>
-        <button id="tickerApplyBtn" disabled onclick="applyTickerRoute()">▶ Старт</button>
+        <button id="tickerApplyBtn" class="start-btn" disabled onclick="applyTickerRoute()">▶ Старт</button>
         <button class="stop-btn" onclick="stopTicker()">⏹ Стоп</button>
     </div>
 
     <script>
-        // ============ ПЕРЕМЕННЫЕ ============
         let selectedRouteId = null;
         let selectedRouteData = null;
         let stopsData = [];
-        let currentStopOrder = 1;
         let totalStops = 0;
         let pollInterval = null;
-        let previousStopOrder = null;
-        let tickerPhase = 'route';
-        let announcementTimeout = null;
+        let previousAnnouncedNext = null;
+        let previousCurrentOrder = null;
 
-        // ============ ИНИЦИАЛИЗАЦИЯ ============
         document.addEventListener('DOMContentLoaded', () => {
             loadCitiesForTicker();
         });
 
-        // ============ ЗАГРУЗКА ГОРОДОВ ============
         async function loadCitiesForTicker() {
             try {
                 const response = await fetch('/api/cities');
@@ -182,7 +171,6 @@
             }
         }
 
-        // ============ ВЫБОР ГОРОДА ============
         async function onTickerCityChange() {
             const cityId = document.getElementById('tickerCitySelect').value;
             const routeSelect = document.getElementById('tickerRouteSelect');
@@ -214,13 +202,10 @@
             }
         }
 
-        // ============ ВЫБОР МАРШРУТА ============
         function onTickerRouteChange() {
-            const applyBtn = document.getElementById('tickerApplyBtn');
-            applyBtn.disabled = !document.getElementById('tickerRouteSelect').value;
+            document.getElementById('tickerApplyBtn').disabled = !document.getElementById('tickerRouteSelect').value;
         }
 
-        // ============ ЗАПУСК БЕГУЩЕЙ СТРОКИ ============
         async function applyTickerRoute() {
             const routeSelect = document.getElementById('tickerRouteSelect');
             selectedRouteId = routeSelect.value;
@@ -246,13 +231,16 @@
                     return;
                 }
 
+                // Получаем начальное состояние
                 const stateResponse = await fetch(`/api/current-stop?route_id=${selectedRouteId}`);
                 const stateData = await stateResponse.json();
-                currentStopOrder = stateData.current_order || 1;
-                previousStopOrder = currentStopOrder;
+                previousCurrentOrder = stateData.current_order || 1;
+                previousAnnouncedNext = stateData.announced_next || null;
 
-                tickerPhase = 'route';
-                showCurrentStop();
+                // Показываем текущую остановку
+                showCurrentStop(previousCurrentOrder);
+                
+                // Запускаем опрос
                 startPolling();
 
             } catch (error) {
@@ -260,22 +248,18 @@
             }
         }
 
-        // ============ СБРОС АНИМАЦИИ ============
         function resetAnimation(el) {
             el.style.animation = 'none';
-            el.offsetHeight; // форсируем reflow
+            el.offsetHeight;
             el.style.animation = '';
         }
 
-        // ============ ПОКАЗАТЬ ТЕКУЩУЮ ОСТАНОВКУ ============
-        function showCurrentStop() {
+        function showCurrentStop(order) {
             const tickerEl = document.getElementById('tickerText');
-            const currentStop = stopsData[currentStopOrder - 1];
-
+            const currentStop = stopsData[order - 1];
             if (!currentStop) return;
 
-            if (currentStopOrder >= totalStops) {
-                // Конечная — без анимации, по центру
+            if (order >= totalStops) {
                 tickerEl.textContent = `🏁 Конечная остановка «${currentStop.name}» | Спасибо за поездку!`;
                 tickerEl.className = 'ticker-text final';
                 tickerEl.style.animation = 'none';
@@ -284,7 +268,6 @@
                 return;
             }
 
-            // Обычная остановка — бегущая строка
             tickerEl.textContent = `📍 Остановка «${currentStop.name}»`;
             tickerEl.className = 'ticker-text';
             tickerEl.style.display = 'inline-block';
@@ -293,15 +276,10 @@
             tickerEl.style.animation = 'ticker 6s linear infinite';
         }
 
-        // ============ ПОКАЗАТЬ ОБЪЯВЛЕНИЕ "СЛЕДУЮЩАЯ ОСТАНОВКА" ============
-        function showAnnouncement() {
+        function showAnnouncement(nextOrder) {
             const tickerEl = document.getElementById('tickerText');
-            const nextStop = stopsData[currentStopOrder];
-
-            if (!nextStop) {
-                showCurrentStop();
-                return;
-            }
+            const nextStop = stopsData[nextOrder - 1];
+            if (!nextStop) return;
 
             tickerEl.textContent = `🔊 Следующая остановка — ${nextStop.name}`;
             tickerEl.className = 'ticker-text announcement';
@@ -309,18 +287,8 @@
             tickerEl.style.paddingLeft = '100%';
             resetAnimation(tickerEl);
             tickerEl.style.animation = 'ticker 5s linear infinite';
-
-            // Через 4 секунды показываем текущую остановку
-            if (announcementTimeout) clearTimeout(announcementTimeout);
-            announcementTimeout = setTimeout(() => {
-                if (tickerPhase === 'announcement') {
-                    tickerPhase = 'route';
-                    showCurrentStop();
-                }
-            }, 4000);
         }
 
-        // ============ ОПРОС СЕРВЕРА ============
         function startPolling() {
             if (pollInterval) clearInterval(pollInterval);
 
@@ -329,30 +297,29 @@
                     const response = await fetch(`/api/current-stop?route_id=${selectedRouteId}`);
                     const data = await response.json();
                     const newOrder = data.current_order || 1;
+                    const announcedNext = data.announced_next || null;
 
-                    if (newOrder !== previousStopOrder) {
-                        previousStopOrder = newOrder;
-                        currentStopOrder = newOrder;
-
-                        if (currentStopOrder >= totalStops) {
-                            tickerPhase = 'route';
-                            showCurrentStop();
-                        } else {
-                            tickerPhase = 'announcement';
-                            showAnnouncement();
-                        }
+                    // Проверяем: админ нажал "Объявить следующую"?
+                    if (announcedNext && announcedNext !== previousAnnouncedNext) {
+                        previousAnnouncedNext = announcedNext;
+                        showAnnouncement(announcedNext);
                     }
+
+                    // Проверяем: админ нажал "Прибыли"?
+                    if (newOrder !== previousCurrentOrder) {
+                        previousCurrentOrder = newOrder;
+                        showCurrentStop(newOrder);
+                    }
+
                 } catch (error) {
                     console.error('Ошибка опроса:', error);
                 }
-            }, 2000);
+            }, 1500);
         }
 
-        // ============ ОСТАНОВКА ============
         function stopTicker() {
             if (pollInterval) clearInterval(pollInterval);
             pollInterval = null;
-            if (announcementTimeout) clearTimeout(announcementTimeout);
 
             const tickerEl = document.getElementById('tickerText');
             tickerEl.style.animation = 'none';
@@ -362,7 +329,8 @@
             tickerEl.style.paddingLeft = '0';
 
             selectedRouteId = null;
-            previousStopOrder = null;
+            previousCurrentOrder = null;
+            previousAnnouncedNext = null;
         }
     </script>
 </body>
