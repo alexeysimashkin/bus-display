@@ -254,33 +254,6 @@
             font-weight: bold;
         }
 
-        .final-stop-side {
-            width: 250px;
-            background: #f5f5f5;
-            border-left: 2px solid #e0e0e0;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-
-        .final-label-text {
-            color: #999;
-            font-size: 14px;
-            letter-spacing: 3px;
-            margin-bottom: 15px;
-            font-weight: bold;
-        }
-
-        .final-stop-name {
-            color: #d32f2f;
-            font-size: 24px;
-            font-weight: bold;
-            text-align: center;
-            line-height: 1.3;
-        }
-
         /* Индикатор остановок */
         .stop-indicator {
             position: absolute;
@@ -338,6 +311,25 @@
         .stop-counter {
             color: #888;
             font-size: 14px;
+        }
+
+        /* Фаза */
+        .phase-indicator {
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .phase-announced {
+            background: #fff3e0;
+            color: #e65100;
+        }
+
+        .phase-arrived {
+            background: #e8f5e9;
+            color: #2e7d32;
         }
 
         /* Кнопка возврата */
@@ -411,18 +403,14 @@
             </div>
 
             <div class="main-display">
-                <div class="next-stop-header">СЛЕДУЮЩАЯ ОСТАНОВКА</div>
+                <div class="next-stop-header" id="nextStopHeader">СЛЕДУЮЩАЯ ОСТАНОВКА</div>
                 <div class="next-stop-name" id="nextStopDisplay">---</div>
                 <div class="current-stop-info">
                     Текущая: <span class="current-stop-name" id="currentStopDisplay">---</span>
+                    <span class="phase-indicator phase-arrived" id="phaseIndicator">🚌 ПРИБЫЛИ</span>
                 </div>
                 
                 <div class="stop-indicator" id="stopIndicator"></div>
-            </div>
-
-            <div class="final-stop-side">
-                <div class="final-label-text">КОНЕЧНАЯ</div>
-                <div class="final-stop-name" id="finalStopDisplay">---</div>
             </div>
         </div>
 
@@ -439,7 +427,9 @@
         let stopsData = [];
         let currentStopOrder = 1;
         let totalStops = 0;
-        let autoAdvanceInterval = null;
+        let pollInterval = null;
+        let currentPhase = 'arrived'; // 'announced' или 'arrived'
+        let announcedNextOrder = null;
 
         document.addEventListener('DOMContentLoaded', () => {
             loadCities();
@@ -520,7 +510,6 @@
                     option.dataset.routeName = route.name;
                     option.dataset.endPoint = route.end_point;
                     option.dataset.startPoint = route.start_point;
-                    option.dataset.cityName = route.city_name;
                     routeSelect.appendChild(option);
                 });
                 routeSelect.disabled = false;
@@ -547,8 +536,7 @@
                 route_number: selectedOption.dataset.routeNumber,
                 name: selectedOption.dataset.routeName,
                 end_point: selectedOption.dataset.endPoint,
-                start_point: selectedOption.dataset.startPoint,
-                city_name: selectedOption.dataset.cityName
+                start_point: selectedOption.dataset.startPoint
             };
             
             try {
@@ -561,17 +549,17 @@
                     return;
                 }
                 
-                const stateResponse = await fetch(`/api/current-stop?route_id=${selectedRouteId}`);
-                const stateData = await stateResponse.json();
-                currentStopOrder = stateData.current_order || 1;
+                // Получаем текущее состояние с сервера
+                await loadStateFromServer();
                 
                 document.getElementById('selectionScreen').classList.add('hidden');
                 document.getElementById('displayScreen').classList.remove('hidden');
                 
                 updateDisplayInfo();
                 createStopIndicator();
-                startAutoAdvance();
-                updateServerState();
+                
+                // Запускаем опрос сервера (реагируем на кнопки админа)
+                startPolling();
                 
             } catch (error) {
                 console.error('Ошибка запуска табло:', error);
@@ -579,11 +567,64 @@
             }
         }
 
+        // ============ ЗАГРУЗКА СОСТОЯНИЯ С СЕРВЕРА ============
+        async function loadStateFromServer() {
+            try {
+                const response = await fetch(`/api/current-stop?route_id=${selectedRouteId}`);
+                const data = await response.json();
+                
+                currentStopOrder = data.current_order || 1;
+                
+                if (data.announced_next) {
+                    currentPhase = 'announced';
+                    announcedNextOrder = data.announced_next;
+                } else {
+                    currentPhase = 'arrived';
+                    announcedNextOrder = null;
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки состояния:', error);
+            }
+        }
+
+        // ============ ОПРОС СЕРВЕРА ============
+        function startPolling() {
+            if (pollInterval) clearInterval(pollInterval);
+            
+            pollInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/current-stop?route_id=${selectedRouteId}`);
+                    const data = await response.json();
+                    
+                    const newOrder = data.current_order || 1;
+                    const newAnnouncedNext = data.announced_next || null;
+                    
+                    // Проверяем: админ нажал "Объявить следующую"?
+                    if (newAnnouncedNext && newAnnouncedNext !== announcedNextOrder) {
+                        announcedNextOrder = newAnnouncedNext;
+                        currentPhase = 'announced';
+                        updateStopDisplay();
+                    }
+                    
+                    // Проверяем: админ нажал "Прибыли"?
+                    if (newOrder !== currentStopOrder) {
+                        currentStopOrder = newOrder;
+                        currentPhase = 'arrived';
+                        announcedNextOrder = null;
+                        updateStopDisplay();
+                    }
+                    
+                } catch (error) {
+                    console.error('Ошибка опроса:', error);
+                }
+            }, 1500);
+        }
+
+        // ============ ОБНОВЛЕНИЕ ДИСПЛЕЯ ============
         function updateDisplayInfo() {
             document.getElementById('dispRouteNumber').textContent = selectedRouteData.route_number;
             document.getElementById('dispRouteName').textContent = selectedRouteData.name;
             document.getElementById('dispBigNumber').textContent = selectedRouteData.route_number;
-            document.getElementById('finalStopDisplay').textContent = selectedRouteData.end_point;
             document.getElementById('routeFullName').textContent = 
                 `Маршрут №${selectedRouteData.route_number}: ${selectedRouteData.start_point} → ${selectedRouteData.end_point}`;
             updateStopDisplay();
@@ -591,20 +632,45 @@
 
         function updateStopDisplay() {
             const currentStop = stopsData[currentStopOrder - 1];
-            const nextStop = stopsData[currentStopOrder];
             
+            // Текущая остановка
             document.getElementById('currentStopDisplay').textContent = currentStop ? currentStop.name : '---';
             document.getElementById('stopCounter').textContent = `Остановка ${currentStopOrder} из ${totalStops}`;
             
-            if (nextStop) {
-                document.getElementById('nextStopDisplay').textContent = nextStop.name;
-            } else if (currentStopOrder >= totalStops) {
-                document.getElementById('nextStopDisplay').textContent = 'КОНЕЧНАЯ';
+            // Заголовок и следующая остановка зависят от фазы
+            const headerEl = document.getElementById('nextStopHeader');
+            const nextStopEl = document.getElementById('nextStopDisplay');
+            const phaseEl = document.getElementById('phaseIndicator');
+            
+            if (currentStopOrder >= totalStops) {
+                // Конечная
+                headerEl.textContent = 'КОНЕЧНАЯ ОСТАНОВКА';
+                headerEl.style.animation = 'none';
+                nextStopEl.textContent = currentStop ? currentStop.name : '---';
+                phaseEl.textContent = '🚩 КОНЕЧНАЯ';
+                phaseEl.className = 'phase-indicator phase-announced';
+            } else if (currentPhase === 'announced' && announcedNextOrder) {
+                // Объявлена следующая
+                const announcedStop = stopsData[announcedNextOrder - 1];
+                headerEl.textContent = 'СЛЕДУЮЩАЯ ОСТАНОВКА';
+                headerEl.style.animation = 'blink 2s infinite';
+                nextStopEl.textContent = announcedStop ? announcedStop.name : '---';
+                phaseEl.textContent = '📢 ОБЪЯВЛЕНА';
+                phaseEl.className = 'phase-indicator phase-announced';
+            } else {
+                // Прибыли на текущую
+                const nextStop = stopsData[currentStopOrder];
+                headerEl.textContent = 'СЛЕДУЮЩАЯ ОСТАНОВКА';
+                headerEl.style.animation = 'blink 2s infinite';
+                nextStopEl.textContent = nextStop ? nextStop.name : '---';
+                phaseEl.textContent = '🚌 ПРИБЫЛИ';
+                phaseEl.className = 'phase-indicator phase-arrived';
             }
             
             updateStopIndicator();
         }
 
+        // ============ ИНДИКАТОР ОСТАНОВОК ============
         function createStopIndicator() {
             const container = document.getElementById('stopIndicator');
             container.innerHTML = '';
@@ -629,97 +695,24 @@
             });
         }
 
-        function startAutoAdvance() {
-            if (autoAdvanceInterval) clearInterval(autoAdvanceInterval);
-            autoAdvanceInterval = setInterval(() => {
-                moveToNextStop();
-            }, 8000);
-        }
-
-        async function moveToNextStop() {
-            if (currentStopOrder >= totalStops) {
-                clearInterval(autoAdvanceInterval);
-                autoAdvanceInterval = null;
-                return;
-            }
-            currentStopOrder++;
-            updateStopDisplay();
-            updateServerState();
-        }
-
-        async function updateServerState() {
-            try {
-                await fetch('/api/current-stop', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        route_id: parseInt(selectedRouteId),
-                        direction: 'next',
-                        force_order: currentStopOrder
-                    })
-                });
-            } catch (error) {
-                console.error('Ошибка обновления состояния:', error);
-            }
-        }
-
+        // ============ ВОЗВРАТ ============
         function goBack() {
-            if (autoAdvanceInterval) clearInterval(autoAdvanceInterval);
+            if (pollInterval) clearInterval(pollInterval);
+            pollInterval = null;
+            
             selectedRouteId = null;
             selectedRouteData = null;
             stopsData = [];
             currentStopOrder = 1;
             totalStops = 0;
+            currentPhase = 'arrived';
+            announcedNextOrder = null;
+            
             document.getElementById('displayScreen').classList.add('hidden');
             document.getElementById('selectionScreen').classList.remove('hidden');
             document.getElementById('routeSelect').value = '';
             document.getElementById('startBtn').disabled = true;
         }
-
-        document.addEventListener('keydown', (e) => {
-            const displayVisible = !document.getElementById('displayScreen').classList.contains('hidden');
-            if (!displayVisible) return;
-            switch(e.key) {
-                case 'ArrowRight':
-                case ' ':
-                    e.preventDefault();
-                    moveToNextStop();
-                    break;
-                case 'ArrowLeft':
-                    e.preventDefault();
-                    if (currentStopOrder > 1) {
-                        currentStopOrder--;
-                        updateStopDisplay();
-                        updateServerState();
-                    }
-                    break;
-                case 'Escape':
-                    goBack();
-                    break;
-            }
-        });
-
-        let touchStartX = 0;
-        document.addEventListener('touchstart', (e) => {
-            touchStartX = e.touches[0].clientX;
-        });
-        document.addEventListener('touchend', (e) => {
-            const displayVisible = !document.getElementById('displayScreen').classList.contains('hidden');
-            if (!displayVisible) return;
-            const touchEndX = e.changedTouches[0].clientX;
-            const diff = touchStartX - touchEndX;
-            if (Math.abs(diff) > 50) {
-                if (diff > 0) {
-                    moveToNextStop();
-                } else {
-                    if (currentStopOrder > 1) {
-                        currentStopOrder--;
-                        updateStopDisplay();
-                        updateServerState();
-                    }
-                }
-            }
-        });
     </script>
 </body>
 </html>
